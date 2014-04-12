@@ -1,20 +1,21 @@
-%define pkg_version 110
+%define pkg_version 650
 Summary:	Data Compression Programs
 Summary(pl.UTF-8):	Programy do kompresji danych
 Name:		zpaq
-Version:	1.10
-Release:	0.1
-License:	GPL
+Version:	6.50
+Release:	1
+License:	GPL v3
 Group:		Applications/Archiving
+#Source0Download: http://mattmahoney.net/dc/zpaq.html
 Source0:	http://mattmahoney.net/dc/%{name}%{pkg_version}.zip
+# Source0-md5:	7412265ebf52f0b3340677e7a1f2540c
 # from debian git clone git://git.debian.org/git/collab-maint/zpaq.git zpaq
 Source1:	%{name}-pod2man.mk
-Source2:	%{name}-unzpaq.1.pod
-Source3:	%{name}-zpaq.1.pod
-Source4:	%{name}make.in
-Source5:	%{name}_c629f5bbb5181207e7e76ca99f5e0655d57086e5.cpp
-URL:		http://mattmahoney.net/dc/
+Source2:	unzpaq.1.pod
+Source3:	zpaq.1.pod
+URL:		http://mattmahoney.net/dc/zpaq.html
 BuildRequires:	libstdc++-devel
+BuildRequires:	sed >= 4.0
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 
 %description
@@ -32,29 +33,22 @@ zawiera narzędzia pomagające tworzyć i testować nowe algorytmy.
 %prep
 %setup -q -c
 
-%{__rm} *.exe *.bat
+%{__rm} *.exe
 
 mkdir man
-cp -pr %{SOURCE1} man/pod2man.mk
-cp -pr %{SOURCE2} man/unzpaq.1.pod
-cp -pr %{SOURCE3} man/zpaq.1.pod
+cp -p %{SOURCE1} man/pod2man.mk
+cp -p %{SOURCE2} man/unzpaq.1.pod
+cp -p %{SOURCE3} man/zpaq.1.pod
 
-sed -e 's:^pcomp :&%{_prefix}/libexec/zpaq/:' -i *.cfg
-
-sed \
-	-e "s:%CXX%:%{__cxx}:" \
-	-e "s:%CXXFLAGS%:%{rpmcxxflags}:" \
-	-e "s:%LIBDIR%:%{_libdir}:" \
-	-e "s:%LDFLAGS%:%{rpmldflags}:" \
-	%{SOURCE4} > zpaqmake
-
-cp -pr zpaq.cpp unzpaq.cpp
-cp -pr zpaq.h unzpaq.h
+%{__sed} -e 's/gcc -O3/$(CC) $(CFLAGS)/' \
+	-e 's/g++ -O3/$(CXX) $(CXXFLAGS)/' -i Makefile
 
 %build
-printf '#define OPT\n#include "zpaq.cpp"\n' > zpaqstub.cpp
-%{__make} zpaq unzpaq lzppre zpaqstub.o \
-	CPPFLAGS+=-DNDEBUG
+%{__make} \
+	CC="%{__cc}" \
+	CFLAGS="%{rpmcflags} %{rpmcppflags}" \
+	CXX="%{__cxx}"
+	CXXFLAGS="%{__cxx} %{rpmldflags} %{rpmcxxflags} %{rpmcppflags}"
 
 %{__make} -C man -f pod2man.mk makeman \
 	PACKAGE=zpaq
@@ -64,38 +58,18 @@ printf '#define OPT\n#include "zpaq.cpp"\n' > zpaqstub.cpp
 %install
 rm -rf $RPM_BUILD_ROOT
 
-install -d $RPM_BUILD_ROOT%{_bindir}
-install -p zpaqmake zpaq unzpaq $RPM_BUILD_ROOT%{_bindir}
-install -d $RPM_BUILD_ROOT%{_datadir}/zpaq
-install -pm 644 *.cfg $RPM_BUILD_ROOT%{_datadir}/zpaq
-install -d $RPM_BUILD_ROOT%{_libexecdir}/zpaq
-install -pm 755 lzppre $RPM_BUILD_ROOT%{_libexecdir}/zpaq
-
-install -d $RPM_BUILD_ROOT%{_libdir}/zpaq
-install -pm 644 zpaqstub.o $RPM_BUILD_ROOT%{_libdir}/zpaq
-install -d $RPM_BUILD_ROOT%{_includedir}/zpaq
-install -pm 644 zpaq.h $RPM_BUILD_ROOT%{_includedir}/zpaq
-
-install -d $RPM_BUILD_ROOT%{_mandir}/man1
-install -pm 644 man/*zpaq.1 $RPM_BUILD_ROOT%{_mandir}/man1
+install -D zpaq $RPM_BUILD_ROOT%{_bindir}/zpaq
+ln -s zpaq $RPM_BUILD_ROOT%{_bindir}/unzpaq
+install -Dp man/zpaq.1 $RPM_BUILD_ROOT%{_mandir}/man1/zpaq.1
+install -Dp man/unzpaq.1 $RPM_BUILD_ROOT%{_mandir}/man1/unzpaq.1
 
 %clean
 rm -rf $RPM_BUILD_ROOT
 
-%post
-%{_bindir}/zpaq oc %{_datadir}/zpaq/max.cfg out.zpaq files >/dev/null 2>&1 || :
-
 %files
 %defattr(644,root,root,755)
-%doc LICENSE readme.txt
+%doc readme.txt
 %attr(755,root,root) %{_bindir}/unzpaq
 %attr(755,root,root) %{_bindir}/zpaq
-%attr(755,root,root) %{_bindir}/zpaqmake
-%{_includedir}/zpaq/zpaq.h
-%{_libdir}/zpaq/zpaqstub.o
-%{_libexecdir}/zpaq/lzppre
 %{_mandir}/man1/unzpaq.1*
 %{_mandir}/man1/zpaq.1*
-%{_datadir}/zpaq/max.cfg
-%{_datadir}/zpaq/mid.cfg
-%{_datadir}/zpaq/min.cfg
