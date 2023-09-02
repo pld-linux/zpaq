@@ -1,21 +1,16 @@
-%define pkg_version 650
 Summary:	Data Compression Programs
 Summary(pl.UTF-8):	Programy do kompresji danych
 Name:		zpaq
-Version:	6.50
+Version:	7.15
+%define	pkg_ver	%(echo %{version} | tr -d .)
 Release:	1
-License:	GPL v3
+License:	Public Domain
 Group:		Applications/Archiving
 #Source0Download: http://mattmahoney.net/dc/zpaq.html
-Source0:	http://mattmahoney.net/dc/%{name}%{pkg_version}.zip
-# Source0-md5:	7412265ebf52f0b3340677e7a1f2540c
-# from debian git clone git://git.debian.org/git/collab-maint/zpaq.git zpaq
-Source1:	%{name}-pod2man.mk
-Source2:	unzpaq.1.pod
-Source3:	zpaq.1.pod
+Source0:	http://mattmahoney.net/dc/%{name}%{pkg_ver}.zip
+# Source0-md5:	1779c19decc885b44636c497b61d937a
 URL:		http://mattmahoney.net/dc/zpaq.html
 BuildRequires:	libstdc++-devel
-BuildRequires:	sed >= 4.0
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 
 %description
@@ -35,41 +30,25 @@ zawiera narzędzia pomagające tworzyć i testować nowe algorytmy.
 
 %{__rm} *.exe
 
-mkdir man
-cp -p %{SOURCE1} man/pod2man.mk
-cp -p %{SOURCE2} man/unzpaq.1.pod
-cp -p %{SOURCE3} man/zpaq.1.pod
-
-%{__sed} -e 's/gcc -O3/$(CC) $(CFLAGS)/' \
-	-e 's/g++ -O3/$(CXX) $(CXXFLAGS)/' -i Makefile
-
 %build
 %{__make} \
-	CC="%{__cc}" \
-	CFLAGS="%{rpmcflags} %{rpmcppflags}" \
-	CXX="%{__cxx}"
-	CXXFLAGS="%{__cxx} %{rpmldflags} %{rpmcxxflags} %{rpmcppflags}"
-
-%{__make} -C man -f pod2man.mk makeman \
-	PACKAGE=zpaq
-%{__make} -C man -f pod2man.mk makeman \
-	PACKAGE=unzpaq
+	CXX="%{__cxx}" \
+	CPPFLAGS="%{rpmcppflags} -Dunix" \
+	CXXFLAGS="%{rpmcxxflags}" \
+	LDFLAGS="%{rpmldflags} %{rpmcxxflags}"
 
 %install
 rm -rf $RPM_BUILD_ROOT
 
-install -D zpaq $RPM_BUILD_ROOT%{_bindir}/zpaq
-ln -s zpaq $RPM_BUILD_ROOT%{_bindir}/unzpaq
-install -Dp man/zpaq.1 $RPM_BUILD_ROOT%{_mandir}/man1/zpaq.1
-install -Dp man/unzpaq.1 $RPM_BUILD_ROOT%{_mandir}/man1/unzpaq.1
+%{__make} install \
+	DESTDIR=$RPM_BUILD_ROOT \
+	PREFIX=%{_prefix}
 
 %clean
 rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(644,root,root,755)
-%doc readme.txt
-%attr(755,root,root) %{_bindir}/unzpaq
+%doc COPYING readme.txt
 %attr(755,root,root) %{_bindir}/zpaq
-%{_mandir}/man1/unzpaq.1*
 %{_mandir}/man1/zpaq.1*
